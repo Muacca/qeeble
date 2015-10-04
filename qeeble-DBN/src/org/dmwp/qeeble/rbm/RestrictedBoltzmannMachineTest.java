@@ -3,17 +3,17 @@ package org.dmwp.qeeble.rbm;
 import java.util.Random;
 
 import org.dmwp.qeeble.ColumnInfo;
+import org.dmwp.qeeble.ColumnInfoDefault;
+import org.dmwp.qeeble.ColumnInfoIndexed;
 import org.dmwp.qeeble.DumpUtil;
 import org.dmwp.qeeble.Model;
 
 public class RestrictedBoltzmannMachineTest {
 
- private static final int[] visibleColumns = {
+ private static ColumnInfo visibleColumns = new ColumnInfoIndexed(new int[]{
   0, 1, 2, 3, 4, 5
- };
- private static final int[] hiddenColumns = {
-  0, 1, 2
- };
+ });
+ private static ColumnInfo hiddenColumns = new ColumnInfoDefault(3);
 
  // training data
  private static int[][] train_X = {
@@ -38,15 +38,14 @@ public class RestrictedBoltzmannMachineTest {
 
  public static void main(String[] args) throws Exception {
   RestrictedBoltzmannMachineContext context = new RestrictedBoltzmannMachineContext(
-   new Random(1234), learningRate, training_epochs, cdSteps
+   new Random(1234), learningRate, cdSteps
   );
-  Model model = context.create(ColumnInfo.create(visibleColumns), ColumnInfo.create(hiddenColumns));
+  Model model = context.create(visibleColumns, hiddenColumns);
 
   // train
-  for(int epoch = 0; epoch < context.getEpochCount(); epoch++) {
+  for(int epoch = 0; epoch < training_epochs; epoch++) {
    for(int[] x: train_X) {
-    RestrictedBoltzmannMachine.train(
-     model, context.getRng(), x, context.getLearningRate(), context.getContrastiveDivergenceStep());
+    RestrictedBoltzmannMachine.train(context, model, x);
    }
   }
 

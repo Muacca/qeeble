@@ -5,12 +5,23 @@ import org.dmwp.qeeble.Util;
 
 public class LogisticRegression {
  
- public static void train(Model model, int[] input, int[] output, double lr) throws Exception {
+ public static void train(LogisticRegressionContext context, Model model, double[] input, double[] output) throws Exception {
   double[] py = predict(model, input);
   for(int i = 0; i < model.getHiddenColumnInfo().size(); i++) {
-   double dy = (output[i] - py[i]) * lr;
+   double dy = (output[model.getHiddenColumnInfo().index(i)] - py[i]) * context.getLearningRate();
    for(int j = 0; j < model.getVisibleColumnInfo().size(); j++) {
-    model.addWeight(i, j, dy * input[j]);
+    model.addWeight(i, j, dy * input[model.getVisibleColumnInfo().index(j)]);
+   }
+   model.addHiddenBias(i, dy);
+  }
+ }
+ 
+ public static void train(LogisticRegressionContext context, Model model, int[] input, int[] output) throws Exception {
+  double[] py = predict(model, input);
+  for(int i = 0; i < model.getHiddenColumnInfo().size(); i++) {
+   double dy = (output[model.getHiddenColumnInfo().index(i)] - py[i]) * context.getLearningRate();
+   for(int j = 0; j < model.getVisibleColumnInfo().size(); j++) {
+    model.addWeight(i, j, dy * input[model.getVisibleColumnInfo().index(j)]);
    }
    model.addHiddenBias(i, dy);
   }

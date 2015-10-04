@@ -132,11 +132,10 @@ public class Model {
   * @throws Exception
   */
  public double[] propagateUp(int[] visible) throws Exception {
-  if(visible.length != visibleColumns.size())throw new Exception("invalid visible size.");
   double[] hidden = Arrays.copyOf(hiddenBias, hiddenColumns.size());
   for(int i = 0; i < hiddenColumns.size(); ++i) {
    for(int j = 0; j < visibleColumns.size(); ++j) {
-    hidden[i] += weight[i][j] * visible[j];
+    hidden[i] += weight[i][j] * visible[visibleColumns.index(j)];
    }
   }
   return hidden;
@@ -150,11 +149,10 @@ public class Model {
   * @throws Exception
   */
  public double[] propagateUp(double[] visible) throws Exception {
-  if(visible.length != visibleColumns.size())throw new Exception("invalid visible size.");
   double[] hidden = Arrays.copyOf(hiddenBias, hiddenColumns.size());
   for(int i = 0; i < hiddenColumns.size(); ++i) {
    for(int j = 0; j < visibleColumns.size(); ++j) {
-    hidden[i] += weight[i][j] * visible[j];
+    hidden[i] += weight[i][j] * visible[visibleColumns.index(j)];
    }
   }
   return hidden;
@@ -171,7 +169,7 @@ public class Model {
   double[] visible = Arrays.copyOf(visibleBias, visibleColumns.size());
   for(int i = 0; i < visibleColumns.size(); ++i) {
    for(int j = 0; j < hiddenColumns.size(); ++j) {
-    visible[i] += weight[j][i] * hidden[j];
+    visible[i] += weight[j][i] * hidden[hiddenColumns.index(j)];
    }
   }
   return visible;
@@ -189,7 +187,7 @@ public class Model {
   double[] visible = Arrays.copyOf(visibleBias, visibleColumns.size());
   for(int i = 0; i < visibleColumns.size(); ++i) {
    for(int j = 0; j < hiddenColumns.size(); ++j) {
-    visible[i] += weight[j][i] * hidden[j];
+    visible[i] += weight[j][i] * hidden[hiddenColumns.index(j)];
    }
   }
   return visible;

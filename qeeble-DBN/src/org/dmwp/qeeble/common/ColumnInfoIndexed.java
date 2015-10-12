@@ -1,4 +1,4 @@
-package org.dmwp.qeeble;
+package org.dmwp.qeeble.common;
 
 public class ColumnInfoIndexed implements ColumnInfo {
 

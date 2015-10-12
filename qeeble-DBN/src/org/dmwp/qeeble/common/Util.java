@@ -1,6 +1,5 @@
-package org.dmwp.qeeble;
+package org.dmwp.qeeble.common;
 
-import java.util.Arrays;
 import java.util.Random;
 
 public class Util {
@@ -55,7 +54,7 @@ public class Util {
   return rng.nextDouble() * (max - min) + min;
  }
  
- public static double[][] uniformedWeight(Random rng, int inputSize, int outputSize) {
+ public static double[][] uniformedWeight(Random rng, int outputSize, int inputSize) {
   double[][] array = new double[outputSize][];
   for(int i = 0; i < outputSize; ++i) {
    array[i] = uniformArray(rng, inputSize);
@@ -72,20 +71,6 @@ public class Util {
   return array;
  }
  
- public static double[][] zeroWeight(int inputSize, int outputSize) {
-  double[][] array = new double[outputSize][];
-  for(int i = 0; i < outputSize; ++i) {
-   array[i] = zeroArray(inputSize);
-  } 
-  return array;
- }
-
- public static double[] zeroArray(int n) {
-  double[] array = new double[n];
-  Arrays.fill(array, 0.0);
-  return array;
- }
-
  private Util() {}
 
 }

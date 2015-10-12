@@ -1,7 +1,6 @@
 package org.dmwp.qeeble.lr;
 
-import org.dmwp.qeeble.ColumnInfo;
-import org.dmwp.qeeble.Model;
+import org.dmwp.qeeble.common.Model;
 
 public class LogisticRegressionContext {
 
@@ -11,15 +10,12 @@ public class LogisticRegressionContext {
   this.learningRate = learningRate;
  }
  
- public Model create(ColumnInfo visibleColumns, ColumnInfo hiddenColumns) {
-  return Model.createEmpty(visibleColumns, hiddenColumns);
+ public Model create(int visibleColumnSize, int hiddenColumnSize) {
+  return Model.createEmpty(visibleColumnSize, hiddenColumnSize);
  }
  
  public double getLearningRate() {
   return learningRate;
- }
- public void setLearningRate(double learningRate) {
-  this.learningRate = learningRate;
  }
 
 }

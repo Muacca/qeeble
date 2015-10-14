@@ -2,33 +2,24 @@ package org.dmwp.qeeble.rbm;
 
 import java.util.Random;
 
+import org.dmwp.qeeble.common.EpochContext;
 import org.dmwp.qeeble.common.Model;
-import org.dmwp.qeeble.common.Util;
 import org.dmwp.qeeble.common.Vector;
 
-public class RestrictedBoltzmannMachineContext {
-
- public static final int DEFAULT_CONTRASTIVE_DIVERGENCE_STEP = 1;
+public class RestrictedBoltzmannMachineContext extends EpochContext {
 
  private Random rng;
+ private double learningRate0;
  private double learningRate;
- private int contrastiveDivergenceStep;
- public RestrictedBoltzmannMachineContext(Random rng, double learningRate) {
-  this(rng, learningRate, DEFAULT_CONTRASTIVE_DIVERGENCE_STEP);
- }
- public RestrictedBoltzmannMachineContext(Random rng, double learningRate, int contrastiveDivergenceStep) {
-  super();
+ public RestrictedBoltzmannMachineContext(Random rng, double learningRate, int epochMax) {
+  super(epochMax);
   this.rng = rng;
+  this.learningRate0 = learningRate;
   this.learningRate = learningRate;
-  this.contrastiveDivergenceStep = contrastiveDivergenceStep;
  }
 
  public Model create(int visibleColumnSize, int hiddenColumnSize) {
   return Model.createUniformed(rng, visibleColumnSize, hiddenColumnSize);
- }
-
- public int[] binomial(double[] array) {
-  return Util.binomial(rng, array);
  }
 
  public Vector binomial(Vector v) {
@@ -39,9 +30,17 @@ public class RestrictedBoltzmannMachineContext {
  public double getLearningRate() {
   return learningRate;
  }
- public int getContrastiveDivergenceStep() {
-  return contrastiveDivergenceStep;
+
+ @Override
+ public void next() {
+  super.next();
+  learningRate = learningRate0 / Math.pow(1 + learningRate0 * currentEpoch(), 0.75);
  }
 
+ @Override
+ public void initEpoch() {
+  super.initEpoch();
+  learningRate = learningRate0;
+ }
 
 }

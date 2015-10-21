@@ -14,13 +14,17 @@
 
 - qeeble-common
   - 共通的なクラス（Vector、Matrix、Modelなど）を集めたプロジェクトです。
-  - いちおうインターフェイス定義していますが、今のところDense系しか実装していません（sparse系実装が必要かどうかは不明）。
+  - いちおうインターフェイス定義していますが、今のところDense系しか実装していません（Sparse系実装が必要かどうかは不明）。
 - qeeble-DBN
   - DBNの簡易な実装です。
   - Restricted Boltzmann Machineは、CD-1法のみ実装を残しました（CD-k入れると見通し悪かっので…）。
   - 最終層はLogistic Regressionでfinetuningしています。
+- qeeble-mnist
+  - MNISTのデータを読み込むReaderクラスのプロジェクトです。
+  - データはこちらからダウンロードください⇒ [MNIST](http://yann.lecun.com/exdb/mnist/)
 - qeeble-example
   - DBNを実行するときのmainメソッドの例です。
+  - MNISTの学習＆予測を実装してみましたが……遅いっ！　時間かかりすぎる！
 - qeeble-old
   - もともとの実装を単にJavaに置き換えた結果です。VectorやMatrixではなく、double配列での実装が残っています。
   - もともとの実装方針の痕跡が残っています（CD-kとか）。

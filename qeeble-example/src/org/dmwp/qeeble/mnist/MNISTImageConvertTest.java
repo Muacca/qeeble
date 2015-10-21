@@ -37,7 +37,7 @@ public class MNISTImageConvertTest {
     if(in.readCount() % 100 == 0) {
      System.out.print(".");
      if(in.readCount() % 1000 == 0) {
-       System.out.println(in.readCount() + "/" + in.getInfo().getSize() + ": " + (System.currentTimeMillis() - start) + "msec");
+      System.out.println(in.readCount() + "/" + in.getInfo().getSize() + ": " + (System.currentTimeMillis() - start) + "msec");
      }
     }
    }

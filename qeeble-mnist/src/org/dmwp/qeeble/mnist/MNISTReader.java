@@ -36,8 +36,8 @@ public class MNISTReader {
   return count;
  }
  
- public boolean available() throws IOException {
-  return (labelInput.available() > 0 && count < info.getSize());
+ public boolean available() {
+  return (count < info.getSize());
  }
  
  public MNISTInfo getInfo() {
@@ -46,9 +46,7 @@ public class MNISTReader {
 
  public MNISTData read(byte[] buf) throws IOException {
   int label = labelInput.readByte();
-  for(int i = 0; i < buf.length; ++i) {
-   buf[i] = (byte)imageInput.readUnsignedByte();
-  }
+  imageInput.read(buf);
   return new MNISTData(info, count++, label, buf);
  }
  
@@ -60,7 +58,7 @@ public class MNISTReader {
  public MNISTDataDouble readDouble(double[] buf) throws IOException {
   int label = labelInput.readByte();
   for(int i = 0; i < buf.length; ++i) {
-   buf[i] = imageInput.readUnsignedByte();
+   buf[i] = ((double)imageInput.readUnsignedByte()) / 255.0;
   }
   return new MNISTDataDouble(info, count++, label, buf);
  }

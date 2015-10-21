@@ -3,7 +3,9 @@ package org.dmwp.qeeble.mnist;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -20,12 +22,12 @@ public class MNISTLearnDBNTest {
 
  // params
  private static final double pretrain_lr = 0.1;
- private static final int pretraining_epochs = 1;
+ private static final int pretraining_epochs = 10;
  private static final double finetune_lr = 0.1;
- private static final int finetune_epochs = 5;
+ private static final int finetune_epochs = 100;
 
  private static final int outputLayerSize = 10;
- private static final int[] RBMlayerSizes = {784, 300, 100};
+ private static final int[] RBMlayerSizes = {784, 200, 50};
 
 
  /**Learning by DBN from MNIST data
@@ -41,7 +43,9 @@ public class MNISTLearnDBNTest {
   }
 
   long start = System.currentTimeMillis();
-  try{
+  try(
+   PrintStream out = new PrintStream(new FileOutputStream("./log.txt"));
+   ){
    DeepBeliefNetworkContext context = new DeepBeliefNetworkContext(
     new RestrictedBoltzmannMachineContext(new Random(1234), pretrain_lr, pretraining_epochs),
     new LogisticRegressionContext(finetune_lr, finetune_epochs));
@@ -53,11 +57,11 @@ public class MNISTLearnDBNTest {
     System.out.println("layer: " + (i + 1));
     Model model = context.getPreContext().create(RBMlayerSizes[i], RBMlayerSizes[i + 1]);
     while(context.getPreContext().hasNext()) {
-     System.out.print("epoch: " + context.getPreContext().currentEpoch());
+     System.out.print("epoch: " + (context.getPreContext().currentEpoch() + 1));
      pretrain(context, model, preModels, args[0], args[1]);
      context.getPreContext().next();
+     System.out.println((System.currentTimeMillis() - start) + "msec");
     }
-    System.out.println((System.currentTimeMillis() - start) + "msec");
     preModels.add(model);
     context.getPreContext().initEpoch();  
    }
@@ -66,14 +70,16 @@ public class MNISTLearnDBNTest {
    System.out.println("finetune start.");
    Model outputModel = Model.createEmpty(RBMlayerSizes[RBMlayerSizes.length - 1], outputLayerSize);
    while(context.getFineContext().hasNext()) {
-    System.out.print("epoch: " + context.getFineContext().currentEpoch());
+    System.out.print("epoch: " + (context.getFineContext().currentEpoch() + 1));
     finetune(context, outputModel, preModels, args[0], args[1]);
     context.getFineContext().next();
+    System.out.println((System.currentTimeMillis() - start) + "msec");
    }
 
    // predict
    System.out.println("predict start.");
-   predict(outputModel, preModels, args[0], args[1]);
+   predict(out, outputModel, preModels, args[0], args[1]);
+   System.out.println((System.currentTimeMillis() - start) + "msec");
 
   }catch(Exception e) {
    e.printStackTrace();
@@ -90,7 +96,7 @@ public class MNISTLearnDBNTest {
    double[] buf = in.getInfo().createDoubleBuffer();
    while(in.available()) {
     MNISTDataDouble data = in.readDouble(buf);
-    DeepBeliefNetwork.pretrain(context, model, preModels, VectorDense.create(data.getBuf()));
+    DeepBeliefNetwork.pretrain(context, model, preModels, context.getPreContext().binomial(VectorDense.create(data.getBuf())));
     if(in.readCount() % 200 == 0) {
      System.out.print(".");
     }
@@ -109,7 +115,7 @@ public class MNISTLearnDBNTest {
    while(in.available()) {
     MNISTDataDouble data = in.readDouble(buf);
     setupResult(result, data.getLabel());
-    DeepBeliefNetwork.finetune(context, outputModel, preModels, VectorDense.create(data.getBuf()), VectorDense.create(result));
+    DeepBeliefNetwork.finetune(context, outputModel, preModels, context.getPreContext().binomial(VectorDense.create(data.getBuf())), VectorDense.create(result));
     if(in.readCount() % 200 == 0) {
      System.out.print(".");
     }
@@ -117,7 +123,7 @@ public class MNISTLearnDBNTest {
   }
  }
  
- private static void predict(Model outputModel, List<Model> preModels, String labelFilename, String imageFilename) throws Exception {
+ private static void predict(PrintStream out, Model outputModel, List<Model> preModels, String labelFilename, String imageFilename) throws Exception {
   try(
    DataInputStream labelInput = new DataInputStream(new BufferedInputStream(new FileInputStream(labelFilename)));
    DataInputStream imageInput = new DataInputStream(new BufferedInputStream(new FileInputStream(imageFilename)));
@@ -126,8 +132,8 @@ public class MNISTLearnDBNTest {
    double[] buf = in.getInfo().createDoubleBuffer();
    while(in.available()) {
     MNISTDataDouble data = in.readDouble(buf);
-    System.out.print(data.getLabel() + " --> ");
-    DumpUtil.dump(DeepBeliefNetwork.predict(outputModel, preModels, VectorDense.create(data.getBuf())));
+    out.print(data.getLabel() + " --> ");
+    DumpUtil.dump(out, DeepBeliefNetwork.predict(outputModel, preModels, VectorDense.create(data.getBuf())));
    }
   }
  }

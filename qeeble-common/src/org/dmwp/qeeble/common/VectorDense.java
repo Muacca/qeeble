@@ -109,7 +109,7 @@ public class VectorDense implements Vector {
 
  @Override
  public void subtractFrom(Vector v) throws Exception {
-  if(v.size() != size()) throw new Exception("invalid dimension.");
+  if(v.size() != size()) throw new Exception("invalid dimension:" + v.size() + ", must:" + size());
   for(int i = 0; i < array.length; ++i) {
    subtractFrom(i, v.get(i));
   }

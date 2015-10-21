@@ -12,6 +12,7 @@ import java.util.Random;
 
 import org.dmwp.qeeble.DumpUtil;
 import org.dmwp.qeeble.common.Model;
+import org.dmwp.qeeble.common.Vector;
 import org.dmwp.qeeble.common.VectorDense;
 import org.dmwp.qeeble.dbn.DeepBeliefNetwork;
 import org.dmwp.qeeble.dbn.DeepBeliefNetworkContext;
@@ -27,7 +28,7 @@ public class MNISTLearnDBNTest {
  private static final int finetune_epochs = 100;
 
  private static final int outputLayerSize = 10;
- private static final int[] RBMlayerSizes = {784, 200, 50};
+ private static final int[] RBMlayerSizes = {784, 200};
 
 
  /**Learning by DBN from MNIST data
@@ -41,15 +42,52 @@ public class MNISTLearnDBNTest {
    System.err.println("usage: <label file> <image file>");
    System.exit(1);
   }
+  
+  DeepBeliefNetworkContext context = new DeepBeliefNetworkContext(
+   new RestrictedBoltzmannMachineContext(new Random(1234), pretrain_lr, pretraining_epochs),
+   new LogisticRegressionContext(finetune_lr, finetune_epochs));
+
 
   long start = System.currentTimeMillis();
+
+  // load MNIST data
+  int[] labels = null;
+  Vector[] results = null;
+  Vector[] images = null; 
+  System.out.println("load start.");
+  try(
+   DataInputStream labelInput = new DataInputStream(new BufferedInputStream(new FileInputStream(args[0])));
+   DataInputStream imageInput = new DataInputStream(new BufferedInputStream(new FileInputStream(args[1])));
+   ){
+   MNISTReader in = MNISTReader.create(labelInput, imageInput);
+   labels = new int[in.getInfo().getSize()];
+   results = new Vector[in.getInfo().getSize()];
+   images = new Vector[in.getInfo().getSize()]; 
+   int line = 0;
+   while(in.available()) {
+    MNISTDataDouble data = in.readDouble();
+    labels[line] = data.getLabel();
+    results[line] = setupResult(labels[line]);
+    images[line] = context.getPreContext().binomial(VectorDense.create(data.getBuf()));
+    line++;
+    if(line % 1000 == 0) {
+     System.out.print(".");
+    }
+   }
+  } catch(Exception e) {
+   e.printStackTrace();
+   System.exit(1);
+  }
+  System.out.println((System.currentTimeMillis() - start) + "msec");
+
+  if(labels == null) {
+   System.out.println("load failed.");
+   System.exit(1);
+  }
+  
   try(
    PrintStream out = new PrintStream(new FileOutputStream("./log.txt"));
    ){
-   DeepBeliefNetworkContext context = new DeepBeliefNetworkContext(
-    new RestrictedBoltzmannMachineContext(new Random(1234), pretrain_lr, pretraining_epochs),
-    new LogisticRegressionContext(finetune_lr, finetune_epochs));
-
    // pretrain
    System.out.println("pretrain start.");
    List<Model> preModels = new ArrayList<Model>();
@@ -58,7 +96,7 @@ public class MNISTLearnDBNTest {
     Model model = context.getPreContext().create(RBMlayerSizes[i], RBMlayerSizes[i + 1]);
     while(context.getPreContext().hasNext()) {
      System.out.print("epoch: " + (context.getPreContext().currentEpoch() + 1));
-     pretrain(context, model, preModels, args[0], args[1]);
+     pretrain(context, model, preModels, images);
      context.getPreContext().next();
      System.out.println((System.currentTimeMillis() - start) + "msec");
     }
@@ -71,77 +109,69 @@ public class MNISTLearnDBNTest {
    Model outputModel = Model.createEmpty(RBMlayerSizes[RBMlayerSizes.length - 1], outputLayerSize);
    while(context.getFineContext().hasNext()) {
     System.out.print("epoch: " + (context.getFineContext().currentEpoch() + 1));
-    finetune(context, outputModel, preModels, args[0], args[1]);
+    finetune(context, outputModel, preModels, results, images);
     context.getFineContext().next();
     System.out.println((System.currentTimeMillis() - start) + "msec");
    }
 
    // predict
    System.out.println("predict start.");
-   predict(out, outputModel, preModels, args[0], args[1]);
+   System.out.println("correct:" + predict(out, outputModel, preModels, labels, images) + "/" + labels.length);
    System.out.println((System.currentTimeMillis() - start) + "msec");
-
   }catch(Exception e) {
    e.printStackTrace();
    System.exit(1);
   }
  }
 
- private static void pretrain(DeepBeliefNetworkContext context, Model model, List<Model> preModels, String labelFilename, String imageFilename) throws Exception {
-  try(
-   DataInputStream labelInput = new DataInputStream(new BufferedInputStream(new FileInputStream(labelFilename)));
-   DataInputStream imageInput = new DataInputStream(new BufferedInputStream(new FileInputStream(imageFilename)));
-   ){
-   MNISTReader in = MNISTReader.create(labelInput, imageInput);
-   double[] buf = in.getInfo().createDoubleBuffer();
-   while(in.available()) {
-    MNISTDataDouble data = in.readDouble(buf);
-    DeepBeliefNetwork.pretrain(context, model, preModels, context.getPreContext().binomial(VectorDense.create(data.getBuf())));
-    if(in.readCount() % 200 == 0) {
-     System.out.print(".");
-    }
+ private static void pretrain(DeepBeliefNetworkContext context, Model model, List<Model> preModels, Vector[] images) throws Exception {
+  for(int i = 0; i < images.length; ++i) {
+   DeepBeliefNetwork.pretrain(context, model, preModels, images[i]);
+   if(i % 1000 == 0) {
+    System.out.print(".");
    }
   }
  }
 
- private static void finetune(DeepBeliefNetworkContext context, Model outputModel, List<Model> preModels, String labelFilename, String imageFilename) throws Exception {
-  try(
-   DataInputStream labelInput = new DataInputStream(new BufferedInputStream(new FileInputStream(labelFilename)));
-   DataInputStream imageInput = new DataInputStream(new BufferedInputStream(new FileInputStream(imageFilename)));
-   ){
-   MNISTReader in = MNISTReader.create(labelInput, imageInput);
-   double[] buf = in.getInfo().createDoubleBuffer();
-   double[] result = new double[10];
-   while(in.available()) {
-    MNISTDataDouble data = in.readDouble(buf);
-    setupResult(result, data.getLabel());
-    DeepBeliefNetwork.finetune(context, outputModel, preModels, context.getPreContext().binomial(VectorDense.create(data.getBuf())), VectorDense.create(result));
-    if(in.readCount() % 200 == 0) {
-     System.out.print(".");
-    }
-   }
-  }
- }
- 
- private static void predict(PrintStream out, Model outputModel, List<Model> preModels, String labelFilename, String imageFilename) throws Exception {
-  try(
-   DataInputStream labelInput = new DataInputStream(new BufferedInputStream(new FileInputStream(labelFilename)));
-   DataInputStream imageInput = new DataInputStream(new BufferedInputStream(new FileInputStream(imageFilename)));
-   ){
-   MNISTReader in = MNISTReader.create(labelInput, imageInput);
-   double[] buf = in.getInfo().createDoubleBuffer();
-   while(in.available()) {
-    MNISTDataDouble data = in.readDouble(buf);
-    out.print(data.getLabel() + " --> ");
-    DumpUtil.dump(out, DeepBeliefNetwork.predict(outputModel, preModels, VectorDense.create(data.getBuf())));
+ private static void finetune(DeepBeliefNetworkContext context, Model outputModel, List<Model> preModels, Vector[] results, Vector[] images) throws Exception {
+  for(int i = 0; i < results.length; ++i) {
+   DeepBeliefNetwork.finetune(context, outputModel, preModels, images[i], results[i]);
+   if(i % 1000 == 0) {
+    System.out.print(".");
    }
   }
  }
 
- private static void setupResult(double[] result, int label) {
+ private static int predict(PrintStream out, Model outputModel, List<Model> preModels, int[] labels, Vector[] images) throws Exception {
+  int correct = 0;
+  for(int i = 0; i < labels.length; ++i) {
+   Vector result = DeepBeliefNetwork.predict(outputModel, preModels, images[i]);
+   int answer = predictResult(result);
+   out.print((answer == labels[i] ? 1 : 0) + ":" + labels[i] + ":" + answer + " --> ");
+   DumpUtil.dump(out, result);
+   correct += (answer == labels[i] ? 1 : 0);
+  }
+  return correct;
+ }
+
+ private static Vector setupResult(int label) {
+  double[] result = new double[10];
   for(int i = 0; i < result.length; ++i) {
    result[i] = (i == label ? 1 : 0);
   }
+  return VectorDense.create(result);
  }
 
+ private static int predictResult(Vector result) {
+  int label = 0;
+  double max = -1.0;
+  for(int i = 0; i < result.size(); ++i) {
+   if(result.get(i) > max) {
+    max = result.get(i);
+    label = i;
+   }
+  }
+  return label;
+ }
+ 
 }

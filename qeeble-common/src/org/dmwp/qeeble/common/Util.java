@@ -54,11 +54,12 @@ public class Util {
   return rng.nextDouble() * (max - min) + min;
  }
  
- public static double[][] uniformedWeight(Random rng, int outputSize, int inputSize) {
-  double[][] array = new double[outputSize][];
-  for(int i = 0; i < outputSize; ++i) {
-   array[i] = uniformArray(rng, inputSize);
-  } 
+ public static double[] uniformedWeight(Random rng, int outputSize, int inputSize) {
+  double[] array = new double[outputSize * inputSize];
+  double a = 1.0 / inputSize;
+  for(int i = 0; i < array.length; ++i) {
+   array[i] = uniform(rng, -a, a); 
+  }
   return array;
  }
 

@@ -1,6 +1,6 @@
 package org.dmwp.qeeble.lr;
 
-import org.dmwp.qeeble.common.MatrixDense;
+import org.dmwp.qeeble.common.MatrixCrossVector;
 import org.dmwp.qeeble.common.Model;
 import org.dmwp.qeeble.common.Vector;
 
@@ -11,7 +11,7 @@ public class LogisticRegression {
   py.subtractFrom(output);
   py.multiply(context.getLearningRate());
   model.addHiddenBias(py);
-  model.addWeight(MatrixDense.cross(py, input));
+  model.addWeight(MatrixCrossVector.create(py, input));
  }
  
  public static Vector predict(Model model, Vector input) throws Exception {

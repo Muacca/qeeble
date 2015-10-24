@@ -28,18 +28,20 @@ public class MNISTLearnDBNTest {
  private static final int finetune_epochs = 100;
 
  private static final int outputLayerSize = 10;
- private static final int[] RBMlayerSizes = {784, 200};
+ private static final int[] RBMlayerSizes = {784, 196, 49};
 
 
  /**Learning by DBN from MNIST data
   * @param args
-  *          args[0]: label file
-  *          args[1]: image file
+  *          args[0]: label file for train
+  *          args[1]: image file for train
+  *          args[2]: label file for predict
+  *          args[3]: image file for predict
   * @throws IOException
   */
  public static void main(String[] args) {
-  if(args.length != 2) {
-   System.err.println("usage: <label file> <image file>");
+  if(args.length != 4) {
+   System.err.println("usage: <label file for train> <image file for train> <label file for predict> <image file for predict>");
    System.exit(1);
   }
   
@@ -85,12 +87,11 @@ public class MNISTLearnDBNTest {
    System.exit(1);
   }
   
-  try(
-   PrintStream out = new PrintStream(new FileOutputStream("./log.txt"));
-   ){
+  List<Model> preModels = new ArrayList<Model>();
+  Model outputModel = Model.createEmpty(RBMlayerSizes[RBMlayerSizes.length - 1], outputLayerSize);
+  try {
    // pretrain
    System.out.println("pretrain start.");
-   List<Model> preModels = new ArrayList<Model>();
    for(int i = 0; i < RBMlayerSizes.length - 1; ++i) {
     System.out.println("layer: " + (i + 1));
     Model model = context.getPreContext().create(RBMlayerSizes[i], RBMlayerSizes[i + 1]);
@@ -106,17 +107,27 @@ public class MNISTLearnDBNTest {
 
    // finetune
    System.out.println("finetune start.");
-   Model outputModel = Model.createEmpty(RBMlayerSizes[RBMlayerSizes.length - 1], outputLayerSize);
    while(context.getFineContext().hasNext()) {
     System.out.print("epoch: " + (context.getFineContext().currentEpoch() + 1));
     finetune(context, outputModel, preModels, results, images);
     context.getFineContext().next();
     System.out.println((System.currentTimeMillis() - start) + "msec");
    }
+  }catch(Exception e) {
+   e.printStackTrace();
+   System.exit(1);
+  }
 
+   try(
+    PrintStream out = new PrintStream(new FileOutputStream("./log.txt"));
+    DataInputStream labelInput = new DataInputStream(new BufferedInputStream(new FileInputStream(args[2])));
+    DataInputStream imageInput = new DataInputStream(new BufferedInputStream(new FileInputStream(args[3])));
+    ){
    // predict
    System.out.println("predict start.");
-   System.out.println("correct:" + predict(out, outputModel, preModels, labels, images) + "/" + labels.length);
+   MNISTReader in = MNISTReader.create(labelInput, imageInput);
+   int correctCount = predict(out, outputModel, preModels, in);
+   System.out.println("correct:" + correctCount + "/" + in.getInfo().getSize() + " (" + ((double)correctCount * 100) / in.getInfo().getSize() + "%)");
    System.out.println((System.currentTimeMillis() - start) + "msec");
   }catch(Exception e) {
    e.printStackTrace();
@@ -142,14 +153,15 @@ public class MNISTLearnDBNTest {
   }
  }
 
- private static int predict(PrintStream out, Model outputModel, List<Model> preModels, int[] labels, Vector[] images) throws Exception {
+ private static int predict(PrintStream out, Model outputModel, List<Model> preModels, MNISTReader in) throws Exception {
   int correct = 0;
-  for(int i = 0; i < labels.length; ++i) {
-   Vector result = DeepBeliefNetwork.predict(outputModel, preModels, images[i]);
+  while(in.available()) {
+   MNISTDataDouble data = in.readDouble();
+   Vector result = DeepBeliefNetwork.predict(outputModel, preModels, VectorDense.create(data.getBuf()));
    int answer = predictResult(result);
-   out.print((answer == labels[i] ? 1 : 0) + ":" + labels[i] + ":" + answer + " --> ");
+   out.print((answer == data.getLabel() ? 1 : 0) + ":" + data.getLabel() + ":" + answer + " --> ");
    DumpUtil.dump(out, result);
-   correct += (answer == labels[i] ? 1 : 0);
+   correct += (answer == data.getLabel() ? 1 : 0);
   }
   return correct;
  }

@@ -1,49 +1,35 @@
 package org.dmwp.qeeble.common;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
 
-public class VectorDense implements Vector {
+public class VectorIndexed implements Vector {
  
- public static VectorDense create(int[] array) {
-  double[] temp = new double[array.length];
-  for(int i = 0; i < array.length; ++i) {
-   temp[i] = (double)array[i];
-  }
-  return new VectorDense(temp);
+ public static VectorIndexed create(int[] indexs, double[] array) {
+  return new VectorIndexed(indexs, array);
  }
  
- public static VectorDense create(double[] array) {
-  return new VectorDense(array);
- }
- 
- public static VectorDense createEmpty(int columnSize) {
-  double[] array = new double[columnSize];
-  Arrays.fill(array, 0.0);
-  return new VectorDense(array);
- }
- 
-
+ private int[] indexs;
  private double[] array;
- private VectorDense(double[] array){
+ private VectorIndexed(int[] indexs, double[] array){
   super();
+  this.indexs = indexs;
   this.array = array;
  }
 
  @Override
  public final double get(int index) {
-  return array[index];
+  return array[indexs[index]];
  }
 
  @Override
  public final int getInt(int index) {
-  return (int)array[index];
+  return (int)array[indexs[index]];
  }
 
  @Override
  public final int size() {
-  return array.length;
+  return indexs.length;
  }
 
  @Override
@@ -52,57 +38,57 @@ public class VectorDense implements Vector {
    private int i = 0;
    @Override
    public boolean hasNext() {
-    return i < array.length;
+    return i < indexs.length;
    }
    @Override
    public Double next() {
-    return array[i++];
+    return array[indexs[i++]];
    }
   };
  }
 
  @Override
  public final void add(int index, double value) {
-  array[index] += value;
+  array[indexs[index]] += value;
  }
 
  @Override
  public final void add(int index, int value) {
-  array[index] += value;
+  array[indexs[index]] += value;
  }
 
  @Override
  public void add(Vector v) throws Exception {
   if(v.size() != size()) throw new Exception("invalid dimension.");
-  for(int i = 0; i < array.length; ++i) {
+  for(int i = 0; i < indexs.length; ++i) {
    add(i, v.get(i));
   }
  }
 
  @Override
  public final void subtract(int index, double value) {
-  array[index] -= value;
+  array[indexs[index]] -= value;
  }
 
  @Override
  public final void subtract(int index, int value) {
-  array[index] -= value;
+  array[indexs[index]] -= value;
  }
 
  @Override
  public final void subtractFrom(int index, double value) {
-  array[index] = value - array[index];
+  array[indexs[index]] = value - array[indexs[index]];
  }
 
  @Override
  public final void subtractFrom(int index, int value) {
-  array[index] = value - array[index];
+  array[indexs[index]] = value - array[indexs[index]];
  }
 
  @Override
  public void subtract(Vector v) throws Exception {
   if(v.size() != size()) throw new Exception("invalid dimension.");
-  for(int i = 0; i < array.length; ++i) {
+  for(int i = 0; i < indexs.length; ++i) {
    subtract(i, v.get(i));
   }
  }
@@ -110,43 +96,45 @@ public class VectorDense implements Vector {
  @Override
  public void subtractFrom(Vector v) throws Exception {
   if(v.size() != size()) throw new Exception("invalid dimension:" + v.size() + ", must:" + size());
-  for(int i = 0; i < array.length; ++i) {
+  for(int i = 0; i < indexs.length; ++i) {
    subtractFrom(i, v.get(i));
   }
  }
 
  @Override
  public final void multiply(double value) {
-  for(int i = 0; i < array.length; ++i) {
-   array[i] *= value;
+  for(int i = 0; i < indexs.length; ++i) {
+   array[indexs[i]] *= value;
   }
  }
 
  @Override
  public Vector sigmoid() {
-  Util.sigmoid(array);
-  return this;
+  return VectorDense.create(Util.sigmoid(copyToArray()));
  }
 
  @Override
  public Vector softmax() {
-  Util.softmax(array);
-  return this;
+  return VectorDense.create(Util.softmax(copyToArray()));
  }
 
  @Override
  public Vector binomial(Random rng){
-  return create(Util.binomial(rng, array));
+  return VectorDense.create(Util.binomial(rng, copyToArray()));
  }
 
  @Override
  public Vector copy(){
-  return new VectorDense(copyToArray());
+  return VectorDense.create(copyToArray());
  }
 
  @Override
  public double[] copyToArray(){
-  return Arrays.copyOf(array, array.length);
+  double[] temp = new double[indexs.length];
+  for(int i = 0; i < indexs.length; ++i) {
+   temp[i] = array[indexs[i]];
+  }
+  return temp;
  }
 
 }
